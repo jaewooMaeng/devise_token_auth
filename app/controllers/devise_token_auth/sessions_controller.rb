@@ -12,6 +12,12 @@ module DeviseTokenAuth
 
     def create
       # Check
+
+      # | /sign_in | POST | Email authentication. Requires **`email`** and **`password`** as params.
+      # This route will return a JSON representation of the `User` model on successful login 
+      # along with the `access-token` and `client` in the header of the response. |
+
+
       # 일단 params안에 정보 중 email, password가 valid한지 확인하고 
       # 1.valid하지 않으면 예전처럼 
       # 2.valid하면 기기정보가 valid한지 확인하고
@@ -25,19 +31,48 @@ module DeviseTokenAuth
         q_value = get_case_insensitive_field_from_resource_params(field)
 
         @resource = find_resource(field, q_value)
+        # @resource는 devise가 가지는 여러 속성(method, class 등) 중 field와 q_value에 일치하는 것...?
       end
 
       if @resource && valid_params?(field, q_value) && (!@resource.respond_to?(:active_for_authentication?) || @resource.active_for_authentication?)
+        # 이런식으로 .~~~? 문법은 그냥 그대로 해석하면 될 듯하다 Ex> .all?
+        # 일단 제대로 들어왔는지만 확인(이게 비밀번호가 맞는지까지는 x ????)
         valid_password = @resource.valid_password?(resource_params[:password])
+        # 여기서 valid_password? 이런건 devise의 함수를 사용하는 것 같은데 그 중에서 어떤건지 어떻게 알아내야 할까요?
+             
+        # Verifies whether a password (ie from sign in) is the user password.
+        # def valid_password?(password)
+        #    Devise::Encryptor.compare(self.class, encrypted_password, password)
+        # end
+        # 이 친구로 추정됨
+        # Model.valid_password가 이거고
+        # @resource가 해당 정보와 일치하는 유저?로 보인다
+
+        # Note: unlike `Model.valid_password?`, this method does not actually
+        # ensure that the password in the params matches the password stored in
+        # the database. It only checks if the password is *present*. Do not rely
+        # on this method for validating that a given password is correct.
+        #  def valid_password?
+        #    password.present?
+        #  end
+
         if (@resource.respond_to?(:valid_for_authentication?) && !@resource.valid_for_authentication? { valid_password }) || !valid_password
           return render_create_error_bad_credentials
         end
+
+        # 여기에서 cookie 값을 확인한다
+        number = params[:number]
+        if (!Device.find_by_number(number=number))
+          return render_request_for_device
+        end
+
         @client_id, @token = @resource.create_token
         @resource.save
 
         sign_in(:user, @resource, store: false, bypass: false)
 
-        yield @resource if block_given?
+        yield @resource if 
+        # @resource가 블록이면 do end 했을 때 하나씩 뽑을 수 있다?
 
         render_create_success
       elsif @resource && !(!@resource.respond_to?(:active_for_authentication?) || @resource.active_for_authentication?)
@@ -106,6 +141,13 @@ module DeviseTokenAuth
       }
     end
 
+    # 기기인증을 요청
+    def render_request_for_device
+      render json: {
+        data: device_authentication_needed
+      }
+    end
+
     def render_create_error_not_confirmed
       render_error(401, I18n.t('devise_token_auth.sessions.not_confirmed', email: @resource.email))
     end
@@ -116,6 +158,17 @@ module DeviseTokenAuth
 
     def render_create_error_bad_credentials
       render_error(401, I18n.t('devise_token_auth.sessions.bad_credentials'))
+      # I18n은 국제화를 의미한다.
+
+      # def render_error(status, message, data = nil)
+      #   response = {
+      #     success: false,
+      #     errors: [message]
+      #   }
+      #   response = response.merge(data) if data
+      #   render json: response, status: status
+      # end
+      # 이렇게 에러가 나면 success를 false로 해주고 message를 보내준다
     end
 
     def render_destroy_success
@@ -131,7 +184,8 @@ module DeviseTokenAuth
     private
 
     def resource_params
-      params.permit(*params_for_resource(:sign_in))
+      params.permit(:email, :password, :number)
+
       # 여기가 resource_params에 sign_in 정보를 저장하는 함수인 것 같다. / email, password + overrides에서는 number까지 되어있는 상태
     end
   end
