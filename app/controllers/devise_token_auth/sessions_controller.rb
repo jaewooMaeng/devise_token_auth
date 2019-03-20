@@ -12,7 +12,13 @@ module DeviseTokenAuth
 
     def create
       # Check
+      # 일단 params안에 정보 중 email, password가 valid한지 확인하고 
+      # 1.valid하지 않으면 예전처럼 
+      # 2.valid하면 기기정보가 valid한지 확인하고
+        # 2-1.valid하면 뒤의 프로세스 다 진행
+        # 2-2.valid하지 않으면 인증요청 - 이 요청을 어디서 받는지는 알아봐야 한다 (redux-auth)
       field = (resource_params.keys.map(&:to_sym) & resource_class.authentication_keys).first
+      # to_sym converts a string to a symbol. For example, "a".to_sym becomes :a.
 
       @resource = nil
       if field
@@ -126,6 +132,7 @@ module DeviseTokenAuth
 
     def resource_params
       params.permit(*params_for_resource(:sign_in))
+      # 여기가 resource_params에 sign_in 정보를 저장하는 함수인 것 같다. / email, password + overrides에서는 number까지 되어있는 상태
     end
   end
 end
