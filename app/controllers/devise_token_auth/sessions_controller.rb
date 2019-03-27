@@ -144,7 +144,7 @@ module DeviseTokenAuth
     # 기기인증을 요청
     def render_request_for_device
       render json: {
-        data: 'device_authentication_needed'
+        message: 'device_authentication_needed'
       }
     end
 
