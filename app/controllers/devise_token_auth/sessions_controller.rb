@@ -64,11 +64,11 @@ module DeviseTokenAuth
         end
 
         # 여기에서 cookie 값을 확인한다
-        number = params[:number]
-        if (!Device.find_by_number(number=number))
-          return render_request_for_device
-          # 만들고 있는 response
-        end
+        #number = params[:number]
+        #if (!Device.find_by_number(number=number))
+        #  return render_request_for_device
+        #  # 만들고 있는 response
+        #end
  
         @client_id, @token = @resource.create_token
         @resource.save
@@ -146,7 +146,7 @@ module DeviseTokenAuth
     def render_create_success
       render json: {
         data: resource_data(resource_json: @resource.token_validation_response)
-        # module DeviseTokenAuth를 했기 때문에 거기에 있는 token_validation_response 사용가능
+        # module DeviseTokenAuth를 했기 때문에 거기에 있는 token_validation_response 사용가능 -> import가 아니고 module을 만드는 것 같은데..?
         # created_at, updated_at을 제외하고 json 형태로 바꿔주는 것 같다
       }
     end
