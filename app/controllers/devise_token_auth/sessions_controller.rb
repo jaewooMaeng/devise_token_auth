@@ -105,7 +105,7 @@ module DeviseTokenAuth
         user.save!
 
         yield user if block_given?
-
+        # 되나?
         render_destroy_success
       else
         render_destroy_error
