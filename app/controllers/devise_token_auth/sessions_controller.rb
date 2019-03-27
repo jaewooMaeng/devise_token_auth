@@ -75,7 +75,7 @@ module DeviseTokenAuth
 
         sign_in(:user, @resource, store: false, bypass: false)
 
-        yield @resource if 
+        yield @resource if block_given?
         # @resource가 블록이면 do end 했을 때 하나씩 뽑을 수 있다?
 
         render_create_success
