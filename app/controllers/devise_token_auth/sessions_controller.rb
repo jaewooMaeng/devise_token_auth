@@ -37,6 +37,7 @@ module DeviseTokenAuth
       if @resource && valid_params?(field, q_value) && (!@resource.respond_to?(:active_for_authentication?) || @resource.active_for_authentication?)
         # 이런식으로 .~~~? 문법은 그냥 그대로 해석하면 될 듯하다 Ex> .all?
         # 일단 제대로 들어왔는지만 확인(이게 비밀번호가 맞는지까지는 x ????)
+        # 확인할 수 있는 상태인가
         valid_password = @resource.valid_password?(resource_params[:password])
         # 여기서 valid_password? 이런건 devise의 함수를 사용하는 것 같은데 그 중에서 어떤건지 어떻게 알아내야 할까요?
              
@@ -44,7 +45,7 @@ module DeviseTokenAuth
         # def valid_password?(password)
         #    Devise::Encryptor.compare(self.class, encrypted_password, password)
         # end
-        # 이 친구로 추정됨
+        # 이 친구로 추정됨 XXX
         # Model.valid_password가 이거고
         # @resource가 해당 정보와 일치하는 유저?로 보인다
 
@@ -55,17 +56,20 @@ module DeviseTokenAuth
         #  def valid_password?
         #    password.present?
         #  end
+        # 이 친구로 추정된다
 
         if (@resource.respond_to?(:valid_for_authentication?) && !@resource.valid_for_authentication? { valid_password }) || !valid_password
           return render_create_error_bad_credentials
+          # 이게 invalid login credentials -> 잘못된 정보
         end
 
         # 여기에서 cookie 값을 확인한다
         number = params[:number]
         if (!Device.find_by_number(number=number))
           return render_request_for_device
+          # 만들고 있는 response
         end
-
+ 
         @client_id, @token = @resource.create_token
         @resource.save
 
@@ -78,11 +82,15 @@ module DeviseTokenAuth
       elsif @resource && !(!@resource.respond_to?(:active_for_authentication?) || @resource.active_for_authentication?)
         if @resource.respond_to?(:locked_at) && @resource.locked_at
           render_create_error_account_locked
+          # "Your account has been locked due to an excessive number of unsuccessful sign in attempts."
+          # 계속 틀려서 잠긴 경우
         else
           render_create_error_not_confirmed
+          # "A confirmation email was sent to your account at '%{email}'. You must follow the instructions in the email before your account can be activated"
         end
       else
         render_create_error_bad_credentials
+        # "Invalid login credentials. Please try again."
       end
     end
 
@@ -138,13 +146,15 @@ module DeviseTokenAuth
     def render_create_success
       render json: {
         data: resource_data(resource_json: @resource.token_validation_response)
+        # module DeviseTokenAuth를 했기 때문에 거기에 있는 token_validation_response 사용가능
+        # created_at, updated_at을 제외하고 json 형태로 바꿔주는 것 같다
       }
     end
 
     # 기기인증을 요청
     def render_request_for_device
       render json: {
-        message: 'device_authentication_needed'
+        data: resource_data(resource_json: @resource.token_validation_response)
       }
     end
 
